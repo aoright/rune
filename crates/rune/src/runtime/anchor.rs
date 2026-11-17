@@ -80,7 +80,14 @@ impl<S: 'static> Measurement<'_, S> {
     pub(super) fn place(&mut self, taffy: &LayoutEngine, nodes: &mut [Node]) {
         self.node_index.clear();
         self.node_index.reserve(nodes.len());
+        // Pre-order stack of open `(node, rounds_children, carried_dy)` scopes for `El::whole_rows`
+        // lists (and auto-height column wrappers propagating a finished child list's delta).
+        let mut carried: Vec<(usize, bool, f32)> = Vec::new();
         for i in 0..nodes.len() {
+            let par = nodes[i].parent;
+            while carried.last().is_some_and(|&(n, _, _)| par.is_none_or(|p| p < n)) {
+                finish_whole_scope(taffy, nodes, &mut carried, i);
+            }
             let id = if nodes[i].id != NodeId(0) {
                 debug_assert_eq!(self.path_ids.get(&nodes[i].path).copied(), Some(nodes[i].id));
                 nodes[i].id
@@ -91,14 +98,39 @@ impl<S: 'static> Measurement<'_, S> {
             self.node_index.insert(id, i);
             let mut l = taffy.box_layout(nodes[i].taffy);
             // Right to left: laid out left to right, then mirrored inside the parent (`El::dir`).
-            if let Some(p) = nodes[i].parent.filter(|&p| nodes[p].flow == Flow::Rtl && nodes[i].pin == Pin::Flowing) {
+            if let Some(p) = par.filter(|&p| nodes[p].flow == Flow::Rtl && nodes[i].pin == Pin::Flowing) {
                 l.x = nodes[p].local.w - l.x - l.w;
             }
             if nodes[i].flow == Flow::Rtl {
                 l.inset.swap(0, 2);
             }
+            if let Some(p) = par.filter(|&p| nodes[p].whole_rows && carried.last().map(|s| s.0) != Some(p)) {
+                let ps = taffy.style(nodes[p].taffy);
+                if ps.display() == taffy::style::Display::Flex
+                    && ps.flex_direction() == taffy::style::FlexDirection::Column
+                    && ps.flex_wrap() == taffy::style::FlexWrap::NoWrap
+                {
+                    carried.push((p, true, 0.0));
+                } else {
+                    #[cfg(debug_assertions)]
+                    super::layout_diagnostics::warn_whole_rows_direction(&nodes[p].path);
+                }
+            }
+            if let Some(p) = par
+                && let Some(scope) = carried.last_mut().filter(|s| s.0 == p)
+            {
+                let cs = taffy.style(nodes[i].taffy);
+                if cs.display() != taffy::style::Display::None && cs.position() != taffy::style::Position::Absolute {
+                    l.y += scope.2;
+                    if scope.1 {
+                        let h = (l.h + 0.5).floor();
+                        scope.2 += h - l.h;
+                        l.h = h;
+                    }
+                }
+            }
             nodes[i].local = MRect::new(l.x, l.y, l.w, l.h);
-            let (px, py) = nodes[i].parent.map_or((0.0, 0.0), |p| (nodes[p].target[0], nodes[p].target[1]));
+            let (px, py) = par.map_or((0.0, 0.0), |p| (nodes[p].target[0], nodes[p].target[1]));
             let mut x = px + l.x;
             let mut y = py + l.y;
             if let Some(a) = &nodes[i].above
@@ -112,6 +144,9 @@ impl<S: 'static> Measurement<'_, S> {
             }
             nodes[i].target = [x, y, x + l.w, y + l.h];
             nodes[i].inset = l.inset;
+        }
+        while !carried.is_empty() {
+            finish_whole_scope(taffy, nodes, &mut carried, nodes.len());
         }
     }
 
@@ -145,6 +180,77 @@ impl<S: 'static> Measurement<'_, S> {
             changed = true;
         }
         changed
+    }
+}
+
+/// Closes the innermost `El::whole_rows` (or wrapper) scope on `carried` when its subtree ends at
+/// `end`: updates its box, shifts any bottom-pinned absolute children in `list + 1..end`, and
+/// carries its height delta into an enclosing `whole_rows` list or auto-height column wrapper.
+fn finish_whole_scope(taffy: &LayoutEngine, nodes: &mut [Node], carried: &mut Vec<(usize, bool, f32)>, end: usize) {
+    use taffy::style::{Display, FlexDirection, FlexWrap, LengthPercentageAuto, Position};
+    let Some((list, _, shift)) = carried.pop() else { return };
+    if shift == 0.0 {
+        return;
+    }
+    let raw_h = taffy.box_layout(nodes[list].taffy).h;
+    let new_h = if let Some(outer) = carried.last_mut().filter(|s| Some(s.0) == nodes[list].parent && s.1) {
+        let new_h = (raw_h + shift + 0.5).floor();
+        let dh = new_h - nodes[list].local.h;
+        nodes[list].local.h = new_h;
+        nodes[list].target[3] = nodes[list].target[1] + new_h;
+        outer.2 += dh;
+        new_h
+    } else {
+        let new_h = nodes[list].local.h + shift;
+        nodes[list].local.h = new_h;
+        nodes[list].target[3] += shift;
+        if let Some(par) = nodes[list].parent.filter(|&p| nodes[p].scroll.is_none()) {
+            if let Some(outer) = carried.last_mut().filter(|s| s.0 == par) {
+                outer.2 += shift;
+            } else {
+                let ps = taffy.style(nodes[par].taffy);
+                if ps.display() == Display::Flex
+                    && ps.position() != Position::Absolute
+                    && ps.flex_direction() == FlexDirection::Column
+                    && ps.flex_wrap() == FlexWrap::NoWrap
+                    && ps.size().height.into_option().is_none()
+                    && ps.flex_grow() == 0.0
+                {
+                    carried.push((par, false, shift));
+                }
+            }
+        }
+        new_h
+    };
+    let abs_dy = new_h - raw_h;
+    if abs_dy == 0.0 {
+        return;
+    }
+    let mut j = list + 1;
+    while j < end {
+        if nodes[j].parent == Some(list) {
+            let cs = taffy.style(nodes[j].taffy);
+            if cs.display() != Display::None
+                && cs.position() == Position::Absolute
+                && cs.inset().top == LengthPercentageAuto::AUTO
+                && cs.inset().bottom != LengthPercentageAuto::AUTO
+            {
+                nodes[j].local.y += abs_dy;
+                nodes[j].target[1] += abs_dy;
+                nodes[j].target[3] += abs_dy;
+                let root = j;
+                j += 1;
+                while j < end && nodes[j].parent >= Some(root) {
+                    if nodes[j].above.is_none() {
+                        nodes[j].target[1] += abs_dy;
+                        nodes[j].target[3] += abs_dy;
+                    }
+                    j += 1;
+                }
+                continue;
+            }
+        }
+        j += 1;
     }
 }
 

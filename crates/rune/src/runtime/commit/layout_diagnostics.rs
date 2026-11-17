@@ -71,6 +71,15 @@ pub(super) fn collapsed_scrolls(taffy: &LayoutEngine, nodes: &[Node]) {
     }
 }
 
+pub(super) fn warn_whole_rows_direction(path: &str) {
+    if WARNED.lock().unwrap().insert(format!("whole-rows-dir:{path}")) {
+        eprintln!(
+            "rune: El::whole_rows on {path:?} is ignored because its container is not a \
+             non-wrapping column (FlexDirection::Column, FlexWrap::NoWrap). (debug builds only)"
+        );
+    }
+}
+
 #[cfg(test)]
 pub(super) fn warned_at(needle: &str) -> bool {
     WARNED.lock().unwrap().iter().any(|site| site.contains(needle))

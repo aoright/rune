@@ -349,7 +349,7 @@ fn node_cold_needed(c: &NodeCold) -> bool {
         || c.scroll_axes != crate::el::ScrollAxes::Y
         || c.scroll_edges != crate::el::ScrollEdges::default()
         || c.sticky.is_some()
-        || c.growth.is_some()
+        || c.growth.is_some() || c.whole_rows
         || c.glide.is_some()
         || c.a11y != crate::el::A11y::default()
         || c.pixel_aspect.is_some()
@@ -511,7 +511,7 @@ fn flatten_owned(
             scroll_axes: c.scroll_axes,
             scroll_edges: c.scroll_edges,
             sticky: c.sticky,
-            growth: c.growth,
+            growth: c.growth, whole_rows: c.whole_rows,
             glide: c.glide,
             a11y: c.a11y,
             pixel_aspect,
@@ -716,7 +716,7 @@ fn flatten_ref(
             scroll_axes: c.scroll_axes,
             scroll_edges: c.scroll_edges,
             sticky: c.sticky.clone(),
-            growth: c.growth.clone(),
+            growth: c.growth.clone(), whole_rows: c.whole_rows,
             glide: c.glide,
             a11y: c.a11y.clone(),
             pixel_aspect,

@@ -17,6 +17,24 @@ impl El {
         self.cold_mut().growth = Some(Box::new(spec));
         self
     }
+    /// Stacks its in-flow children by their heights rounded to whole points (`(h + 0.5).floor()`,
+    /// matching `Math.round`), as TanStack Virtual's `measureElement` returning
+    /// `Math.round(borderBoxSize.blockSize)` places OpenCode Desktop's timeline rows
+    /// (`app/src/session/timeline/virtualizer.tsx:362,370,1081`). Only heights round; padding and
+    /// gaps keep their exact values, so with a whole top, padding and gap on a non-wrapping column
+    /// every row's top, the heights a virtual list stores and the list's extent are whole points
+    /// (whole CSS px) at any scale, and a fractional gap stays consistent with growth-stack
+    /// extents. Non-column or wrapping containers ignore the flag (with a debug warning), and
+    /// `Display::None` or `Position::Absolute` children are skipped. A child's content keeps its
+    /// own layout from the child's top, so up to half a point hangs below its box or is left
+    /// empty. When the list's subtree finishes, its box, any bottom-pinned absolute children,
+    /// enclosing `whole_rows` lists and auto-height column wrappers up to its scroll viewport
+    /// take the accumulated height delta before later siblings or anchored overlays are placed.
+    /// Off by default.
+    pub fn whole_rows(mut self) -> Self {
+        self.cold_mut().whole_rows = true;
+        self
+    }
     /// A growth-stack row that is streaming: slows near its target and reveals through the
     /// feathered edge.
     pub fn streaming(mut self, on: bool) -> Self {
