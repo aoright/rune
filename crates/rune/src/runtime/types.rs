@@ -138,6 +138,7 @@ pub(crate) struct Node {
     /// `P_GROUP_REST` fades a dropped `El::group_opacity` to full: paint reads it until it lands.
     pub(super) group_fade: bool,
     pub(super) virtual_mount: bool,
+    pub(super) virtual_list: bool,
     /// `El::selection_group`.
     pub(super) selection_group: bool,
     pub(super) window_drag: crate::el::WindowDrag,
@@ -211,6 +212,7 @@ impl Node {
             scale_track: old.scale_track,
             group_fade: old.group_fade,
             virtual_mount: false,
+            virtual_list: false,
             selection_group: false,
             window_drag: crate::el::WindowDrag::None,
             ime_cursor: false,
@@ -494,6 +496,7 @@ pub(super) struct Stack {
     pub(super) window: (f32, f32),
     /// The list viewport in the last layout, apart from the window (e.g. above a dock).
     pub(super) viewport_height: f32,
+    pub(super) virtual_list: bool,
     pub(super) handoff: row_reorder::handoff::Handoff,
     /// How far its rows grew (positive steps only) this frame.
     pub(super) grown: f32,

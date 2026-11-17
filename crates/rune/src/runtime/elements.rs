@@ -350,7 +350,7 @@ impl<S: 'static> Runtime<S> {
                     expanded: n.a11y.expanded,
                     item_selected: n.focus.selected,
                     stuck: self.stuck.get(i).copied().unwrap_or(0.0),
-                    virtual_extent: self.virtuals.contains_key(&n.path) && n.vis.fill.a == 0.0
+                    virtual_extent: n.virtual_list && self.virtuals.contains_key(&n.path) && n.vis.fill.a == 0.0
                         && n.vis.border_width() == 0.0 && n.vis.shadows.is_empty() && n.text.is_none() && n.vis.icon.is_none(),
                 })
             })

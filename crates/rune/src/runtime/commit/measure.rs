@@ -124,7 +124,7 @@ impl<S: 'static> Measurement<'_, S> {
     pub(super) fn measure_virtuals(&mut self, nodes: &[Node], settle: bool) -> bool {
         let mut retry = false;
         for (path, v) in self.virtuals.iter_mut() {
-            let Some((ci, _)) = nodes.iter().enumerate().find(|(_, n)| n.path == *path) else { continue };
+            let Some((ci, _)) = nodes.iter().enumerate().find(|(_, n)| n.virtual_list && n.path == *path) else { continue };
             for n in nodes.iter().filter(|n| n.parent == Some(ci)) {
                 v.set_height(n.key.as_deref().unwrap(), n.local.h);
             }
@@ -703,7 +703,7 @@ impl<S: 'static> Runtime<S> {
             };
             if let Some(mut i) = focused {
                 while let Some(p) = self.nodes[i].parent {
-                    if self.nodes[p].path == *path {
+                    if self.nodes[p].virtual_list && self.nodes[p].path == *path {
                         v.focused_row = self.nodes[i].key.clone();
                         break;
                     }

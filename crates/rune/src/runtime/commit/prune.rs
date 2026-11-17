@@ -62,7 +62,16 @@ impl<S: 'static> Runtime<S> {
         self.memo.on_prune(&remap);
         remap.clear();
         self.apply_scratch.remap = remap;
-        self.virtuals.retain(|path, _| self.nodes.iter().any(|n| n.path == *path));
+        self.virtuals.retain(|path, _| self.nodes.iter().any(|n| n.virtual_list && n.path == *path));
+        if !self.stacks.is_empty() {
+            self.stacks.retain(|id, stack| {
+                let keep = self.node_index.get(id).is_some_and(|&i| self.nodes[i].growth.is_some());
+                if !keep {
+                    for row in &stack.order { self.grows.remove(row); }
+                }
+                keep
+            });
+        }
         self.refresh_modal_index();
         self.flying.retain(|(id, _)| self.node_index.contains_key(id));
         self.has_raise = self.nodes.iter().any(|n| n.vis_flags.raise());

@@ -22,7 +22,7 @@ impl<S: 'static> Runtime<S> {
         for (cid, stack) in &self.stacks {
             let Some(&ci) = self.node_index.get(cid) else { continue };
             let Some(spec) = self.nodes[ci].growth.as_deref().copied() else { continue };
-            let origin = self.virtuals.get(&self.nodes[ci].path).map_or(0.0, |v| v.before);
+            let origin = self.nodes[ci].virtual_list.then(|| self.virtuals.get(&self.nodes[ci].path)).flatten().map_or(0.0, |v| v.before);
             self.row_dy[ci] = grid(origin, s);
             let mut y = stack.pad_top - origin;
             let mut first_row = true;

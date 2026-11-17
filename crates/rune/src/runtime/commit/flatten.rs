@@ -481,15 +481,13 @@ fn flatten_owned(
             style.set_flex_direction(FlexDirection::Row);
             Some(ScrollXChild::Single { vertical: scroll_axes.y() })
         } else {
-            if !scroll_axes.y() {
-                style.set_flex_direction(FlexDirection::Row);
-            }
+            if !scroll_axes.y() { style.set_flex_direction(FlexDirection::Row); }
             Some(ScrollXChild::Many { vertical: scroll_axes.y() })
         }
     } else {
         None
     };
-    let time_scale = cold.time_scale;
+    let (time_scale, virtual_list) = (cold.time_scale, cold.virtual_estimate.is_some());
     let cold = if cold.is_empty() && trace_namespace.is_none() && pixel_aspect.is_none() && aspect_fit.is_none() {
         crate::cold::Cold::default()
     } else {
@@ -559,6 +557,7 @@ fn flatten_owned(
         scale_track: false,
         group_fade: false,
         virtual_mount: flags.has(ElFlags::VIRTUAL_MOUNT),
+        virtual_list,
         selection_group: flags.has(ElFlags::SELECTION_GROUP),
         window_drag: flags.window_drag(),
         ime_cursor: flags.has(ElFlags::IME_CURSOR),
@@ -685,9 +684,7 @@ fn flatten_ref(
             style.to_mut().set_flex_direction(FlexDirection::Row);
             Some(ScrollXChild::Single { vertical: c.scroll_axes.y() })
         } else {
-            if !c.scroll_axes.y() {
-                style.to_mut().set_flex_direction(FlexDirection::Row);
-            }
+            if !c.scroll_axes.y() { style.to_mut().set_flex_direction(FlexDirection::Row); }
             Some(ScrollXChild::Many { vertical: c.scroll_axes.y() })
         }
     } else {
@@ -764,6 +761,7 @@ fn flatten_ref(
         scale_track: false,
         group_fade: false,
         virtual_mount: flags.has(ElFlags::VIRTUAL_MOUNT),
+        virtual_list: c.virtual_estimate.is_some(),
         selection_group: flags.has(ElFlags::SELECTION_GROUP),
         window_drag: flags.window_drag(),
         ime_cursor: flags.has(ElFlags::IME_CURSOR),

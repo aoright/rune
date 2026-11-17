@@ -100,32 +100,26 @@ impl<S: 'static> Runtime<S> {
             if !self.scene.contains(r_new.id) || self.is_exiting(r_new.id) {
                 continue;
             }
+            let parent_virtual = (!self.virtuals.is_empty())
+                .then(|| r_new.parent.filter(|&p| nodes[p].virtual_list).and_then(|p| self.virtuals.get(&nodes[p].path)))
+                .flatten();
             let mut scene_rect = r_new.local;
-            if !self.virtuals.is_empty()
-                && let Some(v) = r_new.parent.and_then(|p| self.virtuals.get(&nodes[p].path))
-            {
-                scene_rect.y -= v.before;
-            }
+            if let Some(v) = parent_virtual { scene_rect.y -= v.before; }
             let parent_top_clean = r_new.in_row != RowLayout::Snaps
                 || r_new.parent.is_none_or(|p| {
                     nodes.get(p + 1).is_none_or(|first_sib| {
                         let mut sr = first_sib.local;
-                        if !self.virtuals.is_empty()
-                            && let Some(v) = self.virtuals.get(&nodes[p].path)
-                        {
-                            sr.y -= v.before;
-                        }
+                        if let Some(v) = parent_virtual { sr.y -= v.before; }
                         self.scene.get(first_sib.id, prop::FRAME) == Some(sr)
                     })
                 });
             let root_clean = self.node_clean_for_apply(r_new, r_old, any_animating)
                 && parent_top_clean
                 && r_new.parent.map(|p| nodes[p].id) == r_old.parent.map(|p| self.nodes[p].id)
-                && (self.virtuals.is_empty() || !self.virtuals.contains_key(&r_new.path))
+                && (!r_new.virtual_list || !self.virtuals.contains_key(&r_new.path))
                 && self.scene.is_resting_at(r_new.id, scene_rect)
                 && (self.stacks.is_empty() || self.reorder_jump(nodes, span.new_start) == 0.0)
-                && (self.virtuals.is_empty()
-                    || !r_new.parent.and_then(|p| self.virtuals.get(&nodes[p].path)).is_some_and(crate::el::virtual_list::VirtualList::replaced_view));
+                && !parent_virtual.is_some_and(crate::el::virtual_list::VirtualList::replaced_view);
 
             if !root_clean && !self.flying.is_empty() {
                 continue;

@@ -209,7 +209,7 @@ impl<S: 'static> Measurement<'_, S> {
             return;
         }
         for (path, v) in self.virtuals.iter_mut() {
-            let Some(&list) = self.path_ids.get(path).and_then(|id| self.node_index.get(id)) else { continue };
+            let Some(&list) = self.path_ids.get(path).and_then(|id| self.node_index.get(id)).filter(|&&i| nodes.get(i).is_some_and(|n| n.virtual_list)) else { continue };
             for n in nodes.iter_mut().skip(list + 1).filter(|n| n.parent == Some(list)) {
                 n.virtual_mount = n.key.as_deref().and_then(|k| v.index_of(k)).is_some_and(|row| v.mounts_quietly(row, self.commits));
             }

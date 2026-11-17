@@ -1,0 +1,1 @@
+- An unkeyed `virtual_rows` or `virtualize` list replaced in a later commit by a plain element at the same index path now drops its virtual window and stack state instead of measuring or offsetting the replacement's children as virtual rows.

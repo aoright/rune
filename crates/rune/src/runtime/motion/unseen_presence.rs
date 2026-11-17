@@ -62,7 +62,7 @@ impl<S: 'static> Runtime<S> {
     /// like the rows new to the view instead of appearing whole.
     pub(super) fn reenter_unseen_row(&mut self, nodes: &[Node], i: usize, unseen: &HashSet<NodeId>) {
         if !unseen.contains(&nodes[i].id) { return; }
-        let Some(p) = nodes[i].parent else { return };
+        let Some(p) = nodes[i].parent.filter(|&p| nodes[p].virtual_list) else { return };
         let Some(v) = self.virtuals.get_mut(&nodes[p].path) else { return };
         let Some(key) = nodes[i].path.strip_prefix(nodes[p].path.as_str()).and_then(|k| k.strip_prefix('/')) else { return };
         if !v.replaced_view() { return; }

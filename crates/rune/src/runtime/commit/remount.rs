@@ -57,7 +57,7 @@ impl<S: 'static> Runtime<S> {
             }
             let Some(&list_id) = self.path_ids.get(path) else { return false };
             let Some(&list_idx) = self.node_index.get(&list_id) else { return false };
-            if !self.nodes.get(list_idx).is_some_and(|n| n.id == list_id && n.path == *path && n.growth.is_some()) {
+            if !self.nodes.get(list_idx).is_some_and(|n| n.id == list_id && n.virtual_list && n.path == *path && n.growth.is_some()) {
                 return false;
             }
             let Some(&scroll_id) = self.path_ids.get(&v.scroll_path) else { return false };
