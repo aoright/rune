@@ -435,7 +435,8 @@ fn flatten_owned(
     } else {
         in_row
     };
-    let instant_changes = flags.has(ElFlags::INSTANT_CHANGES) || (parent.is_some_and(|p| nodes[p].instant_changes) && !el.cold.animated_changes);
+    let animated_changes = el.cold.animated_changes && !flags.has(ElFlags::INSTANT_CHANGES);
+    let instant_changes = flags.has(ElFlags::INSTANT_CHANGES) || (parent.is_some_and(|p| nodes[p].instant_changes) && !animated_changes);
     let trace_namespace = el.cold.trace_namespace.or_else(|| parent.and_then(|p| nodes[p].trace_namespace));
     let role = el.role_name();
     let parent_flow = parent.map_or(crate::el::Flow::Ltr, |p| nodes[p].flow);
@@ -447,9 +448,7 @@ fn flatten_owned(
     let focus = cold.focus.clone();
     // Only a text field's element has to own its cold fields here; a memo placeholder shares them.
     let mut input = if cold.input.is_some() { cold.get_mut_if_some().and_then(|c| c.input.take()) } else { None };
-    if let Some(sx) = parent_sx {
-        apply_scroll_x_child(&mut style, sx);
-    }
+    if let Some(sx) = parent_sx { apply_scroll_x_child(&mut style, sx); }
     let (measure, secure_measure) = prepare_text(&mut text, input.as_deref(), scale, directed.then_some(flow));
     take_foreground(&mut text, input.as_deref_mut(), &mut vis, memo_ctx.foreground);
     if vis.border_layout { device::border(&mut style, &vis, scale); }
@@ -550,6 +549,7 @@ fn flatten_owned(
         in_row,
         width_leads: flags.has(ElFlags::WIDTH_LEADS),
         instant_changes,
+        animated_changes,
         streaming: flags.has(ElFlags::STREAMING),
         whole: flags.has(ElFlags::WHOLE),
         inert,
@@ -643,12 +643,11 @@ fn flatten_ref(
     } else {
         in_row
     };
-    let instant_changes = flags.has(ElFlags::INSTANT_CHANGES) || (parent.is_some_and(|p| nodes[p].instant_changes) && !el.cold.animated_changes);
+    let animated_changes = el.cold.animated_changes && !flags.has(ElFlags::INSTANT_CHANGES);
+    let instant_changes = flags.has(ElFlags::INSTANT_CHANGES) || (parent.is_some_and(|p| nodes[p].instant_changes) && !animated_changes);
     let trace_namespace = el.cold.trace_namespace.or_else(|| parent.and_then(|p| nodes[p].trace_namespace));
     let mut style: Cow<'_, CompactStyle> = Cow::Borrowed(&el.style);
-    if let Some(sx) = parent_sx {
-        apply_scroll_x_child(style.to_mut(), sx);
-    }
+    if let Some(sx) = parent_sx { apply_scroll_x_child(style.to_mut(), sx); }
     let c = &*el.cold;
     let mut text = el.text.clone();
     let mut input = c.input.clone();
@@ -755,6 +754,7 @@ fn flatten_ref(
         in_row,
         width_leads: flags.has(ElFlags::WIDTH_LEADS),
         instant_changes,
+        animated_changes,
         streaming: flags.has(ElFlags::STREAMING),
         whole: flags.has(ElFlags::WHOLE),
         inert,

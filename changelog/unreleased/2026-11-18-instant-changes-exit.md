@@ -1,0 +1,1 @@
+- An element removed in the same commit that puts `El::instant_changes` on an ancestor now leaves at once instead of fading out, while `El::animated_changes` on the removed element still keeps its exit (#1144).

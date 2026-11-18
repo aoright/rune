@@ -787,7 +787,7 @@ impl<S: 'static> Runtime<S> {
                 let parent_remained_present =
                     old_parent_id.is_none_or(|pid| self.node_index.get(&pid).is_some_and(|&i| i < present_len));
                 if parent_remained_present {
-                    let instant = instant || (old.instant_changes && old_parent_id.and_then(|pid| self.node_index.get(&pid)).is_some_and(|&p| nodes[p].instant_changes));
+                    let instant = instant || (!old.animated_changes && old_parent_id.and_then(|pid| self.node_index.get(&pid)).is_some_and(|&p| nodes[p].instant_changes));
                     let rides_parent = old_parent_id.is_some_and(|p| exit_parents.contains(&p));
                     if tx.commit.lands() || ((instant || tx.unprompted) && !rides_parent && !self.is_exiting(old.id)) || drew_nothing.get(oi).copied().unwrap_or(false) {
                         self.scene.unmount(old.id);
