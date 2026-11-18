@@ -372,6 +372,11 @@ impl Inner {
         let reloaded = false;
         let arrived = self.shared.take_dirty();
         if !arrived && now < self.deadline.get() {
+            if let Some(vm) = self.vm()
+                && let Some(mut s) = vm.lua.app_data_mut::<Sched>()
+            {
+                s.set_clock(now);
+            }
             return reloaded;
         }
         let Some(vm) = self.vm() else { return reloaded };

@@ -1,0 +1,1 @@
+- `rune-luau`: `Script::poll` now advances the scheduler's clock even when no task is due, so `task.wait` and `task.delay` started from a later handler or host call count from the current frame on a virtual clock (#1154).
