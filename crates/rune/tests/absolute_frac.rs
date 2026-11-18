@@ -47,3 +47,36 @@ fn absolute_fractions_span_the_parents_padding_box() {
     assert_eq!(rect(&rt, "content-bar"), [content[0], content[1], 228.0, 4.0]);
     assert_eq!(content[0], scroll[0] + 6.0);
 }
+
+#[test]
+fn h_frac_sizes_flow_and_absolute_children_by_parent_height() {
+    fn view_h(_: &S, _: &mut Cx<S>) -> El {
+        let mut quarter = el().key("flow-quarter").w(20.0);
+        quarter.set_h_frac(0.25);
+
+        col().w_full().h_full().padding(6.0).gap(10.0)
+            // Flow children in a padded row resolve against the parent's content height (100 - 2*10 = 80).
+            .child(
+                row().key("flow-box").w(200.0).h(100.0).py(10.0).gap(8.0)
+                    .child(el().key("flow-forty").w(20.0).h_frac(0.4))
+                    .child(quarter),
+            )
+            // Absolute children in a padded/bordered card resolve against the card's padding box (60 pt).
+            .child(
+                col().key("abs-card").w(120.0).h(60.0).padding(6.0).border(1.0, Color::BLACK)
+                    .child(el().key("abs-full").absolute(0.0, 0.0).w(4.0).h_frac(1.0))
+                    .child(el().key("abs-half").absolute(10.0, 0.0).w(4.0).h_frac(0.5)),
+            )
+    }
+
+    let mut rt = Runtime::new(S, view_h, (400.0, 400.0), Env::new(true, 2.0));
+    rt.frame(0.0);
+
+    let flow_box = rect(&rt, "flow-box");
+    assert_eq!(rect(&rt, "flow-forty"), [flow_box[0], flow_box[1] + 10.0, 20.0, 32.0]);
+    assert_eq!(rect(&rt, "flow-quarter"), [flow_box[0] + 28.0, flow_box[1] + 10.0, 20.0, 20.0]);
+
+    let abs_card = rect(&rt, "abs-card");
+    assert_eq!(rect(&rt, "abs-full"), [abs_card[0], abs_card[1], 4.0, 60.0], "padding box height, not 48 pt content box");
+    assert_eq!(rect(&rt, "abs-half"), [abs_card[0] + 10.0, abs_card[1], 4.0, 30.0]);
+}
